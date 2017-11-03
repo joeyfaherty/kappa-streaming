@@ -1,26 +1,34 @@
 package streaming.driverscripts
 
-import kafka.serializer.StringDecoder
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.spark.streaming.dstream.InputDStream
+import org.apache.spark.streaming.kafka010.{ConsumerStrategies, KafkaUtils, LocationStrategies}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 object KafkaStreamer {
 
   def main(args: Array[String]): Unit = {
 
-    val ssc = streamingContext()
+    val ssc = new StreamingContext("local[*]", "AppName", Seconds(1))
 
-    val kafkaConfig = Map("metadata.broker.list" -> "localhost:9092")
+    val kafkaParams = Map("metadata.broker.list" -> "localhost:9092")
 
-    val topics: Set[String] = List("topic1", "topic2").toSet
+    val topics = List("topicA", "topicB").toSet
 
-/*
-    val lines = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaConfig, topics).map(_._2)
-*/
+    val stream: InputDStream[ConsumerRecord[String, String]] = KafkaUtils.createDirectStream[String, String](
+      ssc,
+      LocationStrategies.PreferConsistent,
+      ConsumerStrategies.Subscribe[String, String](topics, kafkaParams)
+    )
 
+    // do transformations on stream
+
+    stream.print(5)
+
+    ssc.checkpoint("/tmp/checkpoint")
+    ssc.start()
+    ssc.awaitTermination()
 
   }
 
-  def streamingContext(): Unit = {
-    new StreamingContext("local[*]", "AppName", Seconds(1))
-  }
 }
