@@ -1,6 +1,8 @@
 package streaming.driverscripts
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.kafka010.{ConsumerStrategies, KafkaUtils, LocationStrategies}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
@@ -9,11 +11,23 @@ object KafkaStreamer {
 
   def main(args: Array[String]): Unit = {
 
-    val ssc = new StreamingContext("local[*]", "AppName", Seconds(1))
+    val logger: Logger = Logger.getLogger(getClass.getName)
 
-    val kafkaParams = Map("metadata.broker.list" -> "localhost:9092")
+    // ensure only error messages are logged
+    Logger.getLogger("org").setLevel(Level.ERROR)
 
-    val topics = List("topicA", "topicB").toSet
+    val ssc = new StreamingContext("local[*]", "AppName", Seconds(5))
+
+    val kafkaParams = Map[String, Object](
+      "bootstrap.servers" -> "localhost:9092",
+      "key.deserializer" -> classOf[StringDeserializer],
+      "value.deserializer" -> classOf[StringDeserializer],
+      "group.id" -> "com.joey",
+      "auto.offset.reset" -> "latest",
+      "enable.auto.commit" -> (false: java.lang.Boolean)
+    )
+
+    val topics = List("test").toSet
 
     val stream: InputDStream[ConsumerRecord[String, String]] = KafkaUtils.createDirectStream[String, String](
       ssc,
@@ -23,7 +37,12 @@ object KafkaStreamer {
 
     // do transformations on stream
 
-    stream.print(5)
+    stream.foreachRDD { rdd =>
+      val collected = rdd.map(record => ( record.key(), record.value() )).collect()
+      for ( c <- collected )  {
+        println(c)
+      }
+    }
 
     ssc.checkpoint("/tmp/checkpoint")
     ssc.start()
