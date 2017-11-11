@@ -27,8 +27,10 @@ object KafkaStreamer {
       "enable.auto.commit" -> (false: java.lang.Boolean)
     )
 
-    val topics = List("test").toSet
+    val topicName = "my-topic"
+    val topics = List(topicName).toSet
 
+    logger.info(s"Creating DStream of kafka events consuming from topic [$topicName]")
     val stream: InputDStream[ConsumerRecord[String, String]] = KafkaUtils.createDirectStream[String, String](
       ssc,
       LocationStrategies.PreferConsistent,
@@ -44,7 +46,10 @@ object KafkaStreamer {
       }
     }
 
-    ssc.checkpoint("/tmp/checkpoint")
+
+    val checkpointDir = "/tmp/checkpoint"
+    logger.info(s"Creating checkpoint directory [$checkpointDir]")
+    ssc.checkpoint(checkpointDir)
     ssc.start()
     ssc.awaitTermination()
 
